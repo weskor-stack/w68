@@ -11,6 +11,7 @@ from tkinter import  messagebox
 import time
 import logging
 # import history_xlsx
+import os
 
 # Configurar logging básico si no existe
 try:
