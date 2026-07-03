@@ -11,8 +11,9 @@ import conexion
 import get_name_PC
 from datetime import datetime, timezone 
 import rfc3339
+import getpass
 
-def xml_file():
+def xml_file(part_name):
     """Genera archivo XML estructurado por tipos de test"""
     try:
         # Obtener timestamp (mismo formato que json_file)
@@ -26,7 +27,7 @@ def xml_file():
         type_station = station[4]
         station_name = station[2]
         
-        name = conexion.pieces()
+        name = conexion.pieces(part_name)
         piece_id = name[0]
         piece_number = name[1]
         
@@ -385,6 +386,7 @@ def safe_str(value):
 def save_xml_file(root, filename):
     """Guarda los datos en archivo XML con misma estructura de directorios que JSON"""
     try:
+        usuario = getpass.getuser()
         today = datetime.now()
         today_year = str(today.year)
         today_month = today.strftime("%m")
@@ -392,7 +394,7 @@ def save_xml_file(root, filename):
         
         # Directorios de salida (misma estructura que generate_json_pressfit.pressfitJson3)
         file_data_bk = f"C:/AMC/XML/{today_year}/{today_month}/{today_day}/"
-        file_data = f"C:/Users/Tesla/Documents/Traceability/{today_year}/{today_month}/{today_day}/"
+        file_data = f"C:/Users/{usuario}/Documents/Traceability/{today_year}/{today_month}/{today_day}/"
         
         # Crear directorios si no existen
         os.makedirs(file_data_bk, exist_ok=True)
@@ -414,7 +416,7 @@ def save_xml_file(root, filename):
         with open(filepath, 'w', encoding='utf-8') as xmlfile:
             xmlfile.write(xml_pretty)
         
-        print(f"[INFO] Archivo XML generado: {filename}.xml")
+        # print(f"[INFO] Archivo XML generado: {filename}.xml")
         return "PASSED"
         
     except Exception as e:

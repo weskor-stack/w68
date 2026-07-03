@@ -27,7 +27,7 @@ ENCABEZADOS = [
     "duration"
 ]
 
-def csv_file():
+def csv_file(serial_number):
     """Genera archivo CSV con el formato exacto del ejemplo"""
     try:
         # Obtener timestamp con formato RFC3339 + offset (ej. "2026-03-07T17:49:43Z 06:00")
@@ -45,7 +45,7 @@ def csv_file():
         type_station = station[4]
         station_name = station[2]
         
-        name = conexion.pieces()
+        name = conexion.pieces(serial_number)
         piece_id = name[0]
         piece_number = name[1]
         
@@ -80,8 +80,6 @@ def csv_file():
         # Agregar filas de datos (cada fila ya tiene 11 columnas: A, B, y C-K)
         csv_data.extend(filas_datos)
         
-        name = conexion.pieces()
-        piece_id = name[0]
         duration = conexion.duration_json(station[0], piece_id)
         
         taskresult = duration[0] # tabla duration
@@ -491,7 +489,7 @@ def save_csv_file(csv_data, filename):
             writer = csv.writer(csvfile)
             writer.writerows(csv_data)
         
-        print(f"[INFO] Archivo CSV generado: {filename}.csv")
+        # print(f"[INFO] Archivo CSV generado: {filename}.csv")
         return "PASSED"
         
     except Exception as e:
@@ -499,6 +497,6 @@ def save_csv_file(csv_data, filename):
         return f"FAILED: {str(e)}"
 
 # Función para pruebas
-if __name__ == "__main__":
-    result = csv_file()
-    print(f"Resultado: {result}")
+# if __name__ == "__main__":
+#     result = csv_file("P1517040-01-G:REV01:SANN26097000002")
+#     print(f"Resultado: {result}")

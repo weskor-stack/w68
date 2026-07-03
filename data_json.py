@@ -18,7 +18,7 @@ last_digit = last_digit.split('-')
 timer2 = rfc3339.rfc3339(tasktimestamp, utc=True, use_system_timezone=False)+" "+last_digit[3]
 
 ####################################################################################################
-def json_file():
+def json_file(part_name):
     
     action = "completetask"
     tasktimestamp = datetime.now(timezone.utc).astimezone()#"2024-04-02T10:00:32Z 18:46:54"
@@ -43,7 +43,7 @@ def json_file():
     
     type_station = station[4]
 
-    name = conexion.pieces()
+    name = conexion.pieces(part_name)
     piece_id = name[0]
     duration = conexion.duration_json(station[0], piece_id)
     name = name[1]

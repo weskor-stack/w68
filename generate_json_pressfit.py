@@ -195,7 +195,9 @@ def pressfitJson4(action, flowstepname, flowname,actorname, actorversion, actorl
         from datetime import date
         import os
         import json
+        import getpass
 
+        usuario = getpass.getuser()
         today = date.today()
         today_year = str(today.year)
         today_month = today.strftime("%m")
@@ -212,7 +214,7 @@ def pressfitJson4(action, flowstepname, flowname,actorname, actorversion, actorl
         clean_name_file = ' '.join(clean_name_file.split())
 
         file_data_bk = "C:/AMC/JSON/"+today_year+"/"+today_month+"/"+today_day+"/"
-        file_data = "C:/Users/Tesla/Documents/Traceability/"+today_year+"/"+today_month+"/"+today_day+"/"
+        file_data = f"C:/Users/{usuario}/Documents/Traceability/{today_year}/{today_month}/{today_day}/"
 
         data = {
             'sitecode': sitecode,
@@ -265,6 +267,9 @@ def pressfitJson5(action, flowstepname, flowname,actorname, actorversion, actorl
         from datetime import date
         import os
         import json
+        import getpass
+        
+        usuario = getpass.getuser()
 
         today = date.today()
         today_year = str(today.year)
@@ -282,7 +287,7 @@ def pressfitJson5(action, flowstepname, flowname,actorname, actorversion, actorl
         clean_name_file = ' '.join(clean_name_file.split())
 
         file_data_bk = "C:/AMC/RETRY/JSON/"+today_year+"/"+today_month+"/"+today_day+"/"
-        file_data = "C:/Users/Tesla/Documents/Traceability/"+today_year+"/"+today_month+"/"+today_day+"/"
+        file_data = f"C:/Users/{usuario}/Documents/Traceability/{today_year}/{today_month}/{today_day}/"
 
         data = {
             'sitecode': sitecode,
