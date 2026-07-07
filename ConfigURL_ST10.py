@@ -69,10 +69,10 @@ class FormularioApiConfig:
         header = tk.Frame(self.root, bg=BG_HEADER, padx=24, pady=18)
         header.grid(row=0, column=0, sticky="ew")
 
-        tk.Label(header, text="⚙ Configurador de URLs - ST10",
+        tk.Label(header, text="⚙ Configurador de URLs",
                  font=FONT_HEAD, bg=BG_HEADER, fg=FG_WHITE).pack(anchor="w")
 
-        tk.Label(header, text="Todas las APIs son obligatorias (orden de secuencia)",
+        tk.Label(header, text="Todas las APIs son obligatorias",
                  font=FONT_SUBHEAD, bg=BG_HEADER, fg="#BBDEFB").pack(anchor="w", pady=(4, 0))
 
         # --- BOTONES ---

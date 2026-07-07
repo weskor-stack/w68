@@ -55,11 +55,11 @@ class DatabaseManager:
             cursor.close()
             
             logging.info("✅ Conexión a BD establecida correctamente")
-            print("✅ Conexión a BD establecida correctamente")
+            # print("✅ Conexión a BD establecida correctamente")
             
         except mariadb.Error as e:
             logging.error(f"❌ Error conectando a BD: {e}")
-            print(f"❌ Error conectando a BD: {e}")
+            # print(f"❌ Error conectando a BD: {e}")
             messagebox.showerror(
                 title="Error de Conexión", 
                 message="No se pudo conectar a la base de datos. Verifica que MariaDB esté ejecutándose."
@@ -180,7 +180,7 @@ def select_api_configs():
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
-    print(f"Registros DB: {rows}")  # debug — quítalo cuando funcione
+    # print(f"Registros DB: {rows}")  # debug — quítalo cuando funcione
     return rows
 
 def update_api_by_name(nombre, url):
@@ -3994,6 +3994,80 @@ def insert_configuratorst20(machine_id, operator, program_name_version, process_
         if conn: conn.rollback()
         raise Exception(f"Fallo al insertar configuración inicial: {e}")
 
+############################################################################################################################################
+# ===================== Configurador items ST10 (Tabla 2.2 - 9 campos) =====================
+def configurador_w68_st10():
+    """Lee los 8 items de configuración de ST10 (Tabla 2.2 del PDF).
+       Retorna: (machine_id, operator, password,
+                 model_id, process_name, print_macro, location, shop_flor)"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        sql = """
+            SELECT machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro 
+            FROM configurador
+            LIMIT 1
+        """
+        cursor.execute(sql)
+        registro = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if registro:
+            return registro
+        else:
+            return ("", "", "", "", "", "", "", "")
+    except Exception as e:
+        print(f"Error en conexion.configurador_w68_st10: {e}")
+        return "FAILED"
+
+def update_configurador_w68_st10(machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        sql = """
+            UPDATE configurador
+            SET machine_id = ?,
+                operator = ?,
+                program_name_version = ?,
+                process_name = ?,
+                location = ?,
+                shop_flor = ?,
+                password = ?,
+                print_macro = ?                
+        """
+        cursor.execute(sql, (machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Fallo en Base de Datos: {e}")
+
+def insert_configurador_w68_st10(machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        sql = """
+            INSERT INTO configurador (machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        cursor.execute(sql, (machine_id, operator, program_name_version, process_name,
+             location, shop_flor, password, print_macro))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        if conn: conn.rollback()
+        raise Exception(f"Fallo al insertar configuración inicial ST40: {e}")
+    
 ############################################################################################################################################
 
 # name = "P1895152-00-G:SHG2242791000290"
