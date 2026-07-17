@@ -352,11 +352,82 @@ def traceability_station_20(serial_padre, defect_code_default=""):
 
     return payload
 
+def traceability_station_10(result, serial_number):
+    config_local = conexion.configurador_w68_st10()
+    
+    parte = conexion.serial_number2(serial_number)
+
+    if config_local and config_local != "FAILED":
+        machine_id = str(config_local[0]).strip()
+        operator_id = str(config_local[1]).strip()
+        process_name = str(config_local[3]).strip()
+        program_version = str(config_local[2]).strip()
+        location = str(config_local[4]).strip()
+        shop_flor = str(config_local[5]).strip()
+        password = str(config_local[6]).strip()
+        print_macro = str(config_local[7]).strip()
+
+
+    else:
+        machine_id = "AMC-GENLD97"
+        operator_id = "9999"
+        process_name = "Pressfit"
+        program_version = "default_program"
+        location = "default_location"
+        shop_flor = "default_shop_floor"
+        password = "default_password"
+        print_macro = "default_print_macro"
+
+    now = datetime.now(ZoneInfo("America/Mexico_City"))
+    now_utc = now.strftime("%d/%m/%Y %I:%M:%S %p")
+    fecha = str(parte[4])
+    # Convertir la cadena a datetime
+    fecha_dt = datetime.strptime(fecha, "%Y-%m-%d %H:%M:%S")
+
+    # Dar el formato deseado
+    fecha_formateada = fecha_dt.strftime("%d/%m/%Y %I:%M:%S %p")
+    
+    atributos = conexion.select_attributes_st50_80()
+    atributos_map = {}
+    for attr in atributos:
+        if len(attr) >= 7:
+            nombre_atributo = str(attr[1]).lower().strip() 
+            atributos_map[nombre_atributo] = {
+                'defect_code_low': str(attr[5]).strip() if attr[5] is not None else "",   
+                'defect_code_high': str(attr[6]).strip() if attr[6] is not None else "",  
+                'name': attr[1]
+            }
+
+    payload = {
+        "serial": serial_number,
+        "product": parte[1],
+        "station": machine_id,
+        "operator": operator_id,
+        "start_time": fecha_formateada,
+        "end_time": now_utc,
+        "process_name": process_name,
+        "status": result,
+        "commands": [
+            {
+                "command": "ReplaceNontrackedComponent",
+                "ref_designator": f"{process_name}_Machine Name",
+                "component_id": machine_id
+            },
+            {
+                "command": "ReplaceNontrackedComponent",
+                "ref_designator": f"{process_name}_Program Name version",
+                "component_id": program_version   
+            }
+        ]
+    }
+
+    return payload
+
 
 # if __name__ == "__main__":
-#     resultado_json = traceability_station_20(
-#         serial_padre = "P1517040-01-G:REV01:SANN26097000002",
-#         defect_code_default="PLC_DEFAULT_001"
+#     resultado_json = traceability_station_10(
+#         serial_number = "MODEL1-001-0000003",
+#         result = "PASS"
 #     )
     
 #     if isinstance(resultado_json, dict):

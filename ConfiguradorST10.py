@@ -90,6 +90,7 @@ class ConfiguradorUI:
             ("SHOP FLOOR ID", "shop_flor"),
             ("PASSWORD",      "password"),
             ("PRINT MACRO",   "print_macro"),
+            ("ATTEMPTS",      "attempts"),
         ]
 
         self.entries = {}
@@ -119,7 +120,7 @@ class ConfiguradorUI:
             datos = conexion.configurador_w68_st10()
             if datos and datos != "FAILED":
                 orden = ["machine_name", "id_operator", "program_name_version",
-                         "process_name", "location", "shop_flor", "password", "print_macro"]
+                         "process_name", "location", "shop_flor", "password", "print_macro", "attempts"]
                 for i, attr in enumerate(orden):
                     if i < len(datos):
                         valor = datos[i]
@@ -135,10 +136,10 @@ class ConfiguradorUI:
         try:
             datos_actuales = conexion.configurador_w68_st10()
             vacio = (datos_actuales == "FAILED"
-                     or datos_actuales == ("", "", "", "", "", "", "", ""))
+                     or datos_actuales == ("", "", "", "", "", "", "", "", ""))
 
             args = (v["machine_name"], v["id_operator"], v["program_name_version"],
-                    v["process_name"], v["location"], v["shop_flor"], v["password"], v["print_macro"])
+                    v["process_name"], v["location"], v["shop_flor"], v["password"], v["print_macro"], v["attempts"])
 
             if vacio:
                 exito = conexion.insert_configurador_w68_st10(*args)
