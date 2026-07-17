@@ -52,7 +52,7 @@ def consultar_api_y_guardar(api_url, shop_order,qty,directorio_destino=""):
     Returns:
         tuple: (success, nombre_archivo, cantidad_registros)
     """
-    url = api_url.replace("shop_order", shop_order).replace("limit=qty", f"limit={qty}")
+    url = api_url.replace("shoporderno=shop_order", f"shoporderno={shop_order}").replace("limit=qty_sn", f"limit={qty}")
     url_concatenada = f"{url}"
     try:
         # 1. Consultar la API

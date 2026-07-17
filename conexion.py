@@ -4005,7 +4005,7 @@ def configurador_w68_st10():
         cursor = conn.cursor()
         sql = """
             SELECT machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro 
+             location, shop_flor, password, print_macro, attempts 
             FROM configurador
             LIMIT 1
         """
@@ -4016,13 +4016,13 @@ def configurador_w68_st10():
         if registro:
             return registro
         else:
-            return ("", "", "", "", "", "", "", "")
+            return ("", "", "", "", "", "", "", "", "")
     except Exception as e:
         print(f"Error en conexion.configurador_w68_st10: {e}")
         return "FAILED"
 
 def update_configurador_w68_st10(machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro):
+             location, shop_flor, password, print_macro, attempts):
     try:
         conn = get_connection()
         cursor = conn.cursor()
@@ -4035,10 +4035,11 @@ def update_configurador_w68_st10(machine_id, operator, program_name_version, pro
                 location = ?,
                 shop_flor = ?,
                 password = ?,
-                print_macro = ?                
+                print_macro = ?,
+                attempts = ?
         """
         cursor.execute(sql, (machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro))
+             location, shop_flor, password, print_macro, attempts))
         conn.commit()
         cursor.close()
         conn.close()
@@ -4049,17 +4050,17 @@ def update_configurador_w68_st10(machine_id, operator, program_name_version, pro
         raise Exception(f"Fallo en Base de Datos: {e}")
 
 def insert_configurador_w68_st10(machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro):
+             location, shop_flor, password, print_macro, attempts):
     try:
         conn = get_connection()
         cursor = conn.cursor()
         sql = """
             INSERT INTO configurador (machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             location, shop_flor, password, print_macro, attempts)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor.execute(sql, (machine_id, operator, program_name_version, process_name,
-             location, shop_flor, password, print_macro))
+             location, shop_flor, password, print_macro, attempts))
         conn.commit()
         cursor.close()
         conn.close()
@@ -4068,6 +4069,88 @@ def insert_configurador_w68_st10(machine_id, operator, program_name_version, pro
         if conn: conn.rollback()
         raise Exception(f"Fallo al insertar configuración inicial ST40: {e}")
     
+############################################################################################################################################
+
+def serial_number(parte):
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT part_id, part_number,description, model_id, create_registration FROM part WHERE status_id = 3 AND description = %s ORDER BY part_id DESC LIMIT 1",(parte,))
+            part = cursor.fetchone()
+            if not part:
+                return None  # O podrías lanzar una excepción si prefieres
+
+            return part
+
+    except Exception as e:
+        print(f"[ERROR] serial_number(): {e}")
+        return None
+    
+def serial_number2(parte):
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT part_id, part_number,description, model_id, create_registration FROM part WHERE status_id = 2 AND description = %s ORDER BY part_id DESC LIMIT 1",(parte,))
+            part = cursor.fetchone()
+            if not part:
+                return None  # O podrías lanzar una excepción si prefieres
+
+            return part
+
+    except Exception as e:
+        print(f"[ERROR] serial_number(): {e}")
+        return None
+
+def duration_w68(element, name_piece):
+    import rfc3339
+    from datetime import datetime, timezone
+
+    try:
+        # Parsear entrada
+        element = element.split(',')
+        taskresult = element[1]
+
+        # Obtener estación activa
+        with conn.cursor() as cursor:
+            cursor.execute('''SELECT station_id FROM station 
+                              INNER JOIN data_tracking_griffin.type_station ON type_station.ts_id = station.ts_id
+                              WHERE status_id = 1 LIMIT 1''')
+            station = cursor.fetchone()
+            if not station:
+                # print("[ERROR] No hay estación activa")
+                return "FAILED"
+            station_id = station[0]
+
+        # Obtener parte activa
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT part_id, part_number, description, model_id FROM part WHERE status_id = 3 AND description = %s ORDER BY part_id DESC", (name_piece,))
+            part = cursor.fetchone()
+            if not part:
+                # print("[ERROR] Pieza no encontrada")
+                return "FAILED"
+            part_id = part[0]
+
+        # Insertar duración
+        with conn.cursor() as cursor:
+            sql = '''INSERT INTO duration (station_id, part_id, taskresult)
+                     VALUES (?, ?, ?)'''
+            val = (station_id, part_id, taskresult)
+            cursor.execute(sql, val)
+            conn.commit()
+
+        # Desactivar piezas anteriores
+        cursor = conn.cursor()
+        cursor.execute("UPDATE part SET status_id = ? WHERE status_id = ? AND description = ?", (2, 3, name_piece))
+        conn.commit()
+        cursor.close()
+
+        # Registrar en historial
+        # num_piece = [""] * 13 + [taskresult, tasktimestamp, taskduration, metadata]
+        # history_xlsx.history_file_xlsx(num_piece)
+
+        return "PASSED"
+
+    except Exception as e:
+        # print(f"[ERROR] {e}")
+        return "FAILED"
 ############################################################################################################################################
 
 # name = "P1895152-00-G:SHG2242791000290"
