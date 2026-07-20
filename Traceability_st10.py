@@ -961,6 +961,10 @@ def worker(conn, addr):
                                 try:
                                     conn.send("PASSED".encode('UTF-8'))
                                     safe_insert(f"Command received-> {cadena}\nCommand END PROCESS PASSED\nTraceability JSON: {json.dumps(traceability_json_api, indent=4)}\nResponse: {json.dumps(data_traceability, indent=4)}\n", "green")
+                                    conexionBitacora.event("ENDP-002","|Command received| "+cadena,month,day)
+                                    conexionBitacora.event("CMD-F001","|Command,PASSED|",month,day)
+                                    green_label.configure(image=image_green_full)
+                                    red_label.configure(image=image_red)
                                 except Exception as e:
                                     safe_insert(f"Error enviando: {e}", "red")
                                         
