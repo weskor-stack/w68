@@ -33,7 +33,7 @@ def interlocking_station_30(parent_serial_number, parent_part_number):
     # print(json.dumps(interlocking_station_30, indent=4))
     return interlocking_station_30
 
-def interlocking_station_20(serial_number, parent_part_number, pcb_part_number):
+def interlocking_station_20(serial_number):
     unit_information = []
     configurador = conexion.configurador()
     machine_id = configurador[0]
@@ -49,14 +49,24 @@ def interlocking_station_20(serial_number, parent_part_number, pcb_part_number):
         "name": "program_name_version",
         "value": program_id
     })
-    unit_information.append({
-        "name": "pcb_part_number",
-        "value": pcb_part_number
-    })
+
+    piece_id = conexion.serial_number_component(serial_number)
+    componente = conexion.component_data(piece_id[0])
+
+    valores_vistos = set()
+
+    for x in componente:
+        valor = x[1]
+        if valor not in valores_vistos:
+            unit_information.append({
+                "name": "pcb_part_number",
+                "value": valor
+            })
+            valores_vistos.add(valor)
 
     interlocking_station_20 = {
         "serial": serial_number,
-        "product": parent_part_number,
+        "product": piece_id[2],
         "station": machine_id,
         "operator": operator,
         "process_name": process_name,
@@ -101,7 +111,4 @@ def interlocking_station_10(serial_number, parent_part_number):
     # print(json.dumps(interlocking_station_10, indent=4))
     return interlocking_station_10
 
-# interlocking_station_20("AABB-parent_serial_number","CCGG02-parent_part_number","ZZXX01-heater_part_number")
-# interlocking_station_50_80("MODEL1-001-0000015", "2102110-00-C", "COMPONENT-1")
-# interlocking_station_40_empty_data("MODEL1-001-0000015", "2102110-00-C", "HEATSINK-1")
-# interlocking_station_100("P2034365-C0-B:SFY0000TEST001", "HS-2026")
+# interlocking_station_20("P1472635-61-G:SE4A22172000000")

@@ -186,6 +186,7 @@ def traceability_station_30(serial_padre, defect_code_default=""):
     return payload
 
 def traceability_station_20(serial_padre, defect_code_default=""):
+    unit_information = []
     config_local = conexion.configuradorst20()
     
     parte = conexion.obtener_parte2(serial_padre)
@@ -204,6 +205,25 @@ def traceability_station_20(serial_padre, defect_code_default=""):
         process_name = "Pressfit"
         component_name_db = "component"
         program_version = "default_program"
+
+    unit_information.append({
+        "command": "ReplaceNontrackedComponent",
+        "ref_designator": f"{process_name}_Machine Name",
+        "component_id": machine_id
+    })
+
+    unit_information.append({
+        "command": "ReplaceNontrackedComponent",
+        "ref_designator": f"{process_name}_Program Name version",
+        "component_id": program_version   
+    })
+    
+    for x in componente:
+        unit_information.append({
+            "command": "ReplaceTrackedComponent",
+            "ref_designator": f"{process_name}_PCB",
+            "component_id": x[0]
+        })
 
     now = datetime.now(ZoneInfo("America/Mexico_City"))
     now_utc = now.strftime("%d/%m/%Y %I:%M:%S %p")
@@ -328,23 +348,7 @@ def traceability_station_20(serial_padre, defect_code_default=""):
         "end_time": now_utc,
         "process_name": process_name,
         "status": global_status,
-        "commands": [
-            {
-                "command": "ReplaceNontrackedComponent",
-                "ref_designator": f"{process_name}_Machine Name",
-                "component_id": machine_id
-            },
-            {
-                "command": "ReplaceNontrackedComponent",
-                "ref_designator": f"{process_name}_Program Name version",
-                "component_id": program_version   
-            },
-            {
-                "command": "ReplaceTrackedComponent",
-                "ref_designator": f"{process_name}_PCB",
-                "component_id": componente[0][0]
-            }
-        ],
+        "commands": unit_information,
         "test_steps": {
             "AOI LIST": steps_list
         }
