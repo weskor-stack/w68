@@ -55,14 +55,16 @@ def interlocking_station_20(serial_number):
 
     valores_vistos = set()
 
+    indice = 1
     for x in componente:
         valor = x[1]
         if valor not in valores_vistos:
             unit_information.append({
-                "name": "pcb_part_number",
+                "name": "pcb"+str(indice)+"_part_number",
                 "value": valor
             })
             valores_vistos.add(valor)
+            indice+=1
 
     interlocking_station_20 = {
         "serial": serial_number,

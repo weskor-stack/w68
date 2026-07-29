@@ -193,6 +193,8 @@ def traceability_station_20(serial_padre, defect_code_default=""):
 
     componente = conexion.component_data(parte[0])
 
+    indice = 1
+
     if config_local and config_local != "FAILED":
         machine_id = str(config_local[0]).strip()
         operator_id = str(config_local[1]).strip()
@@ -221,9 +223,10 @@ def traceability_station_20(serial_padre, defect_code_default=""):
     for x in componente:
         unit_information.append({
             "command": "ReplaceTrackedComponent",
-            "ref_designator": f"{process_name}_PCB",
+            "ref_designator": f"{process_name}_PCB{indice}",
             "component_id": x[0]
         })
+        indice +=1
 
     now = datetime.now(ZoneInfo("America/Mexico_City"))
     now_utc = now.strftime("%d/%m/%Y %I:%M:%S %p")
