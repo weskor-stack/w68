@@ -169,12 +169,12 @@ def traceability_station_30(serial_padre, defect_code_default=""):
         "commands": [
             {
                 "command": "ReplaceNontrackedComponent",
-                "ref_designator": f"{process_name}_Machine Name",
+                "ref_designator": f"{process_name}_Machine_ID",
                 "component_id": machine_id
             },
             {
                 "command": "ReplaceNontrackedComponent",
-                "ref_designator": f"{process_name}_Program Name version",
+                "ref_designator": f"{process_name}_Program name + version",
                 "component_id": program_version   
             }
         ],
