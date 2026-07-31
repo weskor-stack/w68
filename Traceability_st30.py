@@ -1239,7 +1239,7 @@ def worker(conn, addr):
                                         red_label.configure(image=image_red)
                                     else:
                                         # Ningún archivo se creó
-                                        safe_insert("✗ No file could be generated\n", "red")
+                                        safe_insert(f"✗ No file could be generated\n{error_message}", "red")
                                         try:
                                             conn.send("FAILED".encode('UTF-8'))
                                         except Exception as e:
