@@ -9,6 +9,7 @@ def conduit_st10(parent_serial_number):
     sf_id          = configurador[12]   
     password       = configurador[7]  
     print_macro    = configurador[10] 
+    location     = configurador[11]
 
     commands = []
 
@@ -18,7 +19,7 @@ def conduit_st10(parent_serial_number):
         "refresh_unit": True,
         "source": {
             "workstation": {
-                "station": workstation_id,
+                "station": location,
                 "type":    "location"
             },
             "client_id": sf_id,

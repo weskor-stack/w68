@@ -90,11 +90,11 @@ def interlocking_station_10(serial_number, parent_part_number):
     program_id = configurador[4]
 
     unit_information.append({
-        "name": "machine_name",
+        "name": "Machine_ID",
         "value": machine_id
     })
     unit_information.append({
-        "name": "program_name_version",
+        "name": "Program name + version",
         "value": program_id
     })
 
