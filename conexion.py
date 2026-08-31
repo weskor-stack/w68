@@ -4166,6 +4166,77 @@ def serial_number_component(parte):
         print(f"[ERROR] serial_number(): {e}")
         return None
 ############################################################################################################################################
+############################################################################################################################################
+#CONFIGURADOR ST20
+def configuradorst20_v2():
+    try:
+        conn = get_connection() 
+        cursor = conn.cursor()  
+        sql = """
+            SELECT machine_id, operator, program_name_version, process_name, product, client_id, password
+            FROM configurador 
+            LIMIT 1
+        """
+        cursor.execute(sql)
+        registro = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if registro:
+            return registro
+        else:
+            return ("", "", "", "", "", "", "")
+            
+    except Exception as e:
+        print(f"Error en conexion.configuradorst20: {e}")
+        return "FAILED"
+
+def update_configuratorst20_v2(machine_id, operator, program_name_version, process_name, product, client_id, password):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        sql = """
+            UPDATE configurador 
+            SET machine_id = ?, 
+                operator = ?, 
+                program_name_version  = ?, 
+                process_name = ?,
+                product = ?,
+                client_id = ?,
+                password = ?
+        """
+        cursor.execute(sql, (machine_id, operator, program_name_version, process_name, product, client_id, password))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Fallo en Base de Datos: {e}")
+    
+def insert_configuratorst20_v2(machine_id, operator, program_name_version, process_name, product, client_id, password):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        sql = """
+            INSERT INTO configurador (machine_id, operator, program_name_version, process_name, product, client_id, password)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """
+        cursor.execute(sql, (machine_id, operator, program_name_version, process_name, product, client_id, password))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        if conn: conn.rollback()
+        raise Exception(f"Fallo al insertar configuración inicial: {e}")
+
+############################################################################################################################################
 
 # name = "P1895152-00-G:SHG2242791000290"
 # parameters_pressfit(['F', '50', '10', '100', 'Numeric', 'N', 'PASSED', 'Comentarios', 'dwell_time'],name)

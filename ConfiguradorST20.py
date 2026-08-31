@@ -100,6 +100,16 @@ class ConfiguradorUI:
         self.pcba_process = tk.Entry(inner, **entry_kwargs)
         self.pcba_process.grid(row=5, column=0, sticky="ew", ipady=5, pady=(2, 15))
 
+        # Client_id
+        tk.Label(inner, text="CLIENT ID", bg=BG_MAIN, fg=FG_BLUE_LABEL, font=FONT_LABEL).grid(row=4, column=1, sticky="w", padx=(15,0))
+        self.client_id = tk.Entry(inner, **entry_kwargs)
+        self.client_id.grid(row=5, column=1, sticky="ew", padx=(15, 0), ipady=5, pady=(2, 15))
+
+        # Password
+        tk.Label(inner, text="PASSWORD", bg=BG_MAIN, fg=FG_BLUE_LABEL, font=FONT_LABEL).grid(row=6, column=0, sticky="w")
+        self.password = tk.Entry(inner, **entry_kwargs)
+        self.password.grid(row=7, column=0, sticky="ew", ipady=5, pady=(2, 15))
+
         # # COMPONENT - Radio Button
         # tk.Label(inner, text="COMPONENT", bg=BG_MAIN, fg=FG_BLUE_LABEL, font=FONT_LABEL).grid(row=4, column=0, sticky="w")
         
@@ -125,7 +135,7 @@ class ConfiguradorUI:
 
     def cargar(self):
         try:
-            datos = conexion.configuradorst20() 
+            datos = conexion.configuradorst20_v2() 
             
             if datos and datos != "FAILED":
                 def insertar_seguro(entry_widget, valor):
@@ -144,6 +154,10 @@ class ConfiguradorUI:
                     insertar_seguro(self.process_name, datos[3])
                     # PRODUCT (índice 4)
                     insertar_seguro(self.pcba_process, datos[4])
+                    # CLIENT ID (índice 5)
+                    insertar_seguro(self.client_id, datos[5])
+                    # PASSWORD (índice 6)
+                    insertar_seguro(self.password, datos[6])
                     # COMPONENT (índice 5) - qty_components
                     # Convertir el valor a YES/NO para el radio button
                     
@@ -156,15 +170,17 @@ class ConfiguradorUI:
         prog = self.program_name_version.get().strip()
         proc = self.process_name.get().strip()
         pcb = self.pcba_process.get().strip()
- 
+        client = self.client_id.get().strip()
+        passw = self.password.get().strip()
+
         try:
-            datos_actuales = conexion.configuradorst20()
+            datos_actuales = conexion.configuradorst20_v2()
             
-            if datos_actuales == "FAILED" or datos_actuales == ("", "", "", "", ""):
-                exito = conexion.insert_configuratorst20(mach, ope, prog, proc, pcb)
+            if datos_actuales == "FAILED" or datos_actuales == ("", "", "", "", "", "", ""):
+                exito = conexion.insert_configuratorst20_v2(mach, ope, prog, proc, pcb, client, passw)
                 mensaje = "Configuración inicial creada con éxito."
             else:
-                exito = conexion.update_configuratorst20(mach, ope, prog, proc, pcb)
+                exito = conexion.update_configuratorst20_v2(mach, ope, prog, proc, pcb, client, passw)
                 mensaje = "Configuración actualizada correctamente."
             
             if exito:
