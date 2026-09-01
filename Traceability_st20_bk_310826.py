@@ -29,7 +29,6 @@ import urllib.parse
 import interlocking_json
 import json
 import traceability_json
-import conduit_json
 
 def configurar_logging():
     """Configura el sistema de logging"""
@@ -1393,7 +1392,7 @@ def worker(conn, addr):
                         entry_piece.focus_set()
 
                         error_detectado = False
-                        datos_actuales = conexion.configuradorst20_v2()
+                        datos_actuales = conexion.configuradorst20()
                         pcb_process = datos_actuales[4]
                         
                         # Limpiar tabla al cambiar componente
@@ -1409,12 +1408,12 @@ def worker(conn, addr):
                             conn.send("FAILED".encode('UTF-8'))
                             break
                                                                                         
-                        url_api_conduit = url_data[3][0]
+                        url_api_unit = url_data[0][0]
                         
                         if len(option) == 3 and option[-1] == '1/':
                             entry_piece.configure(state=ctk.NORMAL, textvariable=piece_name)
                             piece_name.set("")
-                            safe_insert("You can scan the PCBA.", "green")
+                            safe_insert("You can scan the part.", "green")
 
                             green_label.configure(image=image_green_full)
                             red_label.configure(image=image_red)
@@ -1439,16 +1438,19 @@ def worker(conn, addr):
                                     if len(scanned_component) > 13:
                                         # BLOQUEO DE CURSOR
                                         entry_piece.configure(state="disabled")
-
-                                        pcba_conduit = conduit_json.conduit_st20(
-                                            scanned_component
-                                        )
-
-                                        response_comp = requests.post(
-                                            url_api_conduit,
-                                            json=pcba_conduit,
-                                            timeout=30
-                                        )
+                                    
+                                        url_comp_base = url_api_unit #url_base_unit.replace("/parentage/", "/")
+                                        url_api_comp_raw = url_comp_base.replace("serial_number", scanned_component)
+                                        url_api_comp = urllib.parse.unquote(url_api_comp_raw)
+                                                                                
+                                        try:
+                                            response_comp = requests.get(url_api_comp, timeout=30)
+                                        except Exception as err_u:
+                                            entry_piece.configure(state=ctk.NORMAL)
+                                            safe_insert(f"HTTP Connection Error on Component: {err_u}", "red")
+                                            conn.send("FAILED".encode('UTF-8'))
+                                            error_detectado = True
+                                            break
                                                                                     
                                         if response_comp.status_code != 200:
                                             entry_piece.configure(state=ctk.NORMAL)
@@ -1465,81 +1467,74 @@ def worker(conn, addr):
                                             conn.send("FAILED".encode('UTF-8'))
                                             error_detectado = True
                                             break
-
-                                        estado = json_comp.get("status", "No status")
-                                        mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
-                                        estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
-
-                                        part_number = json_comp.get('transaction_responses')
-                                        part_number = part_number[0].get('scanned_unit')
-                                        part_number = part_number.get('unit')
-                                        part_number = part_number.get('part_number')
-                                        # print(json.dumps(json_comp, indent=2))
-                                        # print(f"JSON get status: {estado}")
-                                        # print(f"JSON get transaction_responses: {part_number}")
                                                                                     
-                                        if estado != "OK":
+                                        if str(json_comp.get("success")).lower() not in ("true", "1"):
                                             entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert(f"Component API status: {estado}\nMessage: {mensaje}", "red")
-                                            conn.send(f"FAILED".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-
-                                        if not part_number:
-                                            entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert("Missing part_number in Component record", "red")
+                                            msg_err_c = json_comp.get("message", "Rejected PCB Serial")
+                                            safe_insert(f"PCB Rejected: {msg_err_c}", "red")
                                             conn.send("FAILED".encode('UTF-8'))
                                             error_detectado = True
                                             break
-
-                                        # pcba_almacenada = conexion.pcba_store(scanned_component,part_number, estado)
-                                        pcba_almacenada = conexion.component_store(scanned_component,part_number,option[1])
-
-                                        logging.info(f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}")
-                                        logging.info(f"PCBA stored in database: {pcba_almacenada}")
-
-                                        pantalla_final = (
-                                            f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED\n"
-                                            f"[API CONDUIT URL]:\n{url_api_conduit}\n"
-                                            f"[API CONDUIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
-                                            f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}"
-                                        )
-                                        
-                                        safe_insert(pantalla_final, "green")
-                                        
-                                        conn.send(f"{scanned_component}, PASSED".encode('UTF-8'))
-
-                                        conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" actuator: "+scanned_component,month,day)
-                                        conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
-                                        
-                                        green_label.configure(image=image_green_full)
-                                        red_label.configure(image=image_red)
-                                        
-                                        entry_piece.configure(state="readonly", textvariable=piece_name)
-                                        piece_name.set(scanned_component)
-                                        
-                                        pieza = scanned_component
-
-                                        break
-                                    else:
-                                        entry_piece.configure(state="readonly", textvariable=piece_name)
-                                        piece_name.set("")
-                                                    
-                                        safe_insert("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
-        
-                                        try:
+                                                                                    
+                                        data_node_comp = json_comp.get("data", {})
+                                        if isinstance(data_node_comp, list) and data_node_comp:
+                                            data_node_comp = data_node_comp[0]
+                                                                                    
+                                        comp_pn_extraido = data_node_comp.get("part_number")
+                                        comp_process_name = data_node_comp.get("process_name")
+                                                                            
+                                        if not comp_pn_extraido:
+                                            entry_piece.configure(state=ctk.NORMAL)
+                                            safe_insert("Missing part_number in PCB record", "red")
                                             conn.send("FAILED".encode('UTF-8'))
-                                            conn.send("verify data".encode('UTF-8'))
-                                        except Exception as e:
-                                            safe_insert(f"Error enviando: {e}", "red")
-                                                    
-                                        conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+scanned_component,month,day)
-                                        conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
-        
-                                        green_label.configure(image=image_green)
-                                        red_label.configure(image=image_red_full)
-                                                        
+                                            error_detectado = True
+                                            break
+                                                                                
+                                        if not comp_process_name:
+                                            entry_piece.configure(state=ctk.NORMAL)
+                                            safe_insert("Missing process_name in PCB record", "red")
+                                            conn.send("FAILED".encode('UTF-8'))
+                                            error_detectado = True
+                                            break
+                                                                                    
+                                        COMPONENT = scanned_component
+                                        component_sn = comp_pn_extraido
+                                                                                
+                                        safe_insert(f"✅ PCB Registered: {COMPONENT}", "green")
+                                        comp_scanned = True
+                                                                            
+                                    if error_detectado or not comp_scanned:
                                         break
+                                                                    
+                                    if pcb_process != comp_process_name:
+                                        entry_piece.configure(state=ctk.NORMAL)
+                                        safe_insert(f"The PCB did not complete the previous process\n❌ PCB process mismatch: expected '{pcb_process}', got '{comp_process_name}'", "red")
+                                        conn.send("FAILED".encode('UTF-8'))
+                                        error_detectado = True
+                                        break
+
+                                    pantalla_final = (
+                                        f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED\n"
+                                        f"[API UNIT URL]:\n{url_api_comp}\n"
+                                        f"[API UNIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
+                                    )
+                                    
+                                    safe_insert(pantalla_final, "green")
+                                    conexion.component_store(scanned_component,component_sn,option[1])
+                                    conn.send(f"{scanned_component}, PASSED".encode('UTF-8'))
+
+                                    conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" actuator: "+scanned_component,month,day)
+                                    conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
+                                    
+                                    green_label.configure(image=image_green_full)
+                                    red_label.configure(image=image_red)
+                                    
+                                    entry_piece.configure(state="readonly", textvariable=piece_name)
+                                    piece_name.set(scanned_component)
+                                    
+                                    pieza = scanned_component
+
+                                    break
 
                             except TypeError as e:
                                 print("Error: ", e)
@@ -1550,7 +1545,6 @@ def worker(conn, addr):
                         elif len(option) == 4 and option[-1] == '1/':
                             entry_piece.configure(state=ctk.NORMAL, textvariable=piece_name)
                             piece_name.set("")
-                            safe_insert("", "green")
                             # safe_insert("You can scan the part.", "green")
 
                             green_label.configure(image=image_green_full)
@@ -1566,24 +1560,29 @@ def worker(conn, addr):
                             if len(scanned_component) > 13:
                                 # BLOQUEO DE CURSOR
                                 entry_piece.configure(state="disabled")
+                                                                
+                                url_comp_base = url_api_unit #url_base_unit.replace("/parentage/", "/")
+                                url_api_comp_raw = url_comp_base.replace("serial_number", scanned_component)
+                                url_api_comp = urllib.parse.unquote(url_api_comp_raw)
 
-                                pcba_conduit = conduit_json.conduit_st20(
-                                    scanned_component
-                                )
+                                print(url_api_comp)
+                                                                                                            
+                                try:
+                                    response_comp = requests.get(url_api_comp, timeout=30)
+                                except Exception as err_u:
+                                    entry_piece.configure(state=ctk.NORMAL)
+                                    safe_insert(f"HTTP Connection Error on Component: {err_u}", "red")
+                                    conn.send("FAILED".encode('UTF-8'))
+                                    error_detectado = True
+                                    break
 
-                                response_comp = requests.post(
-                                    url_api_conduit,
-                                    json=pcba_conduit,
-                                    timeout=30
-                                )
-                                                                            
                                 if response_comp.status_code != 200:
                                     entry_piece.configure(state=ctk.NORMAL)
                                     safe_insert(f"Component API HTTP {response_comp.status_code}", "red")
                                     conn.send(f"FAILED".encode('UTF-8'))
                                     error_detectado = True
                                     break
-                                                                        
+                                                                                                            
                                 try:
                                     json_comp = response_comp.json()
                                 except Exception:
@@ -1592,67 +1591,79 @@ def worker(conn, addr):
                                     conn.send("FAILED".encode('UTF-8'))
                                     error_detectado = True
                                     break
-
-                                estado = json_comp.get("status", "No status")
-                                mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
-                                estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
-
-                                part_number = json_comp.get('transaction_responses')
-                                part_number = part_number[0].get('scanned_unit')
-                                part_number = part_number.get('unit')
-                                part_number = part_number.get('part_number')
-                                # print(json.dumps(json_comp, indent=2))
-                                # print(f"JSON get status: {estado}")
-                                # print(f"JSON get message: {mensaje}")
-                                # print(f"JSON get transaction_responses: {part_number}")
-                                                                            
-                                if estado != "OK":
+                                                                                                                
+                                if str(json_comp.get("success")).lower() not in ("true", "1"):
                                     entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert(f"Component API status: {estado}\nMessage: {mensaje}", "red")
-                                    conn.send(f"FAILED".encode('UTF-8'))
-                                    error_detectado = True
-                                    break
-
-                                if not part_number:
-                                    entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert("Missing part_number in Component record", "red")
+                                    msg_err_c = json_comp.get("message", "Rejected PCB Serial")
+                                    safe_insert(f"PCB Rejected: {msg_err_c}", "red")
                                     conn.send("FAILED".encode('UTF-8'))
                                     error_detectado = True
                                     break
-
-                                # pcba_almacenada = conexion.pcba_store(scanned_component,part_number, estado)
-                                pcba_almacenada = conexion.component_store(scanned_component,part_number,option[2])
-
-                                logging.info(f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}")
-                                logging.info(f"PCBA stored in database: {pcba_almacenada}")
-
+                                                                                                                
+                                data_node_comp = json_comp.get("data", {})
+                                if isinstance(data_node_comp, list) and data_node_comp:
+                                    data_node_comp = data_node_comp[0]
+                                                                                                                
+                                comp_pn_extraido = data_node_comp.get("part_number")
+                                comp_process_name = data_node_comp.get("process_name")
+                                                                                                        
+                                if not comp_pn_extraido:
+                                    entry_piece.configure(state=ctk.NORMAL)
+                                    safe_insert("Missing part_number in PCB record", "red")
+                                    conn.send("FAILED".encode('UTF-8'))
+                                    error_detectado = True
+                                    break
+                                                                                                            
+                                if not comp_process_name:
+                                    entry_piece.configure(state=ctk.NORMAL)
+                                    safe_insert("Missing process_name in PCB record", "red")
+                                    conn.send("FAILED".encode('UTF-8'))
+                                    error_detectado = True
+                                    break
+                                                                                                                
+                                COMPONENT = scanned_component
+                                component_sn = comp_pn_extraido
+                                                                                                            
+                                safe_insert(f"✅ PCB Registered: {COMPONENT}", "green")
+                                comp_scanned = True
+                                                                                                        
+                                if error_detectado or not comp_scanned:
+                                    break
+                                                                                                
+                                if pcb_process != comp_process_name:
+                                    entry_piece.configure(state=ctk.NORMAL)
+                                    safe_insert(f"The PCB did not complete the previous process\n❌ PCB process mismatch: expected '{pcb_process}', got '{comp_process_name}'", "red")
+                                    conn.send("FAILED".encode('UTF-8'))
+                                    error_detectado = True
+                                    break
+                            
                                 pantalla_final = (
                                     f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED\n"
-                                    f"[API CONDUIT URL]:\n{url_api_conduit}\n"
-                                    f"[API CONDUIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
-                                    f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}"
+                                    f"[API UNIT URL]:\n{url_api_comp}\n"
+                                    f"[API UNIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
                                 )
-                                
+                                                                
                                 safe_insert(pantalla_final, "green")
-                                
+                                conexion.component_store(scanned_component,component_sn,option[2])
                                 conn.send(f"{scanned_component}, PASSED".encode('UTF-8'))
-
+                            
                                 conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" actuator: "+scanned_component,month,day)
                                 conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
-                                
+                                                                
                                 green_label.configure(image=image_green_full)
                                 red_label.configure(image=image_red)
-                                
+                                                                
                                 entry_piece.configure(state="readonly", textvariable=piece_name)
                                 piece_name.set(scanned_component)
-                                
+                                                                
                                 pieza = scanned_component
 
                             else:
+                                conn.settimeout(None)
                                 entry_piece.configure(state="readonly", textvariable=piece_name)
                                 piece_name.set("")
                                             
-                                safe_insert("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
+                                safe_insert("Command received-> "+cadena+" part: "+name_piece+"\n"+"Command FAILED")
 
                                 try:
                                     conn.send("FAILED".encode('UTF-8'))
@@ -1660,7 +1671,7 @@ def worker(conn, addr):
                                 except Exception as e:
                                     safe_insert(f"Error enviando: {e}", "red")
                                             
-                                conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+scanned_component,month,day)
+                                conexionBitacora.event("SPP-002","|Command received| "+cadena+" part: "+name_piece,month,day)
                                 conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                                 green_label.configure(image=image_green)
@@ -1711,8 +1722,6 @@ def worker(conn, addr):
                                     error_msg = data_interlocking.get("message", "Unknown error")
                                     logging.error(f"Interlocking denied: {error_msg}")
                                     safe_insert(f"❌ Interlocking API FAILED: {json.dumps(data_interlocking, indent=2)}", "red")
-                                    green_label.configure(image=image_green)
-                                    red_label.configure(image=image_red_full)
                                     conn.send("FAILED".encode('UTF-8'))
                                     break
                                 
@@ -1740,96 +1749,11 @@ def worker(conn, addr):
                                 conexionBitacora.event("SPP-001", f"Parent: {option[1]}", month, day)
                                 entry_piece.configure(state="readonly", textvariable=piece_name)
                                 piece_name.set(option[1])
-                                green_label.configure(image=image_green_full)
-                                red_label.configure(image=image_red)
                                 # break
                             
                         except Exception as e:
                             safe_insert(f"❌ Exception Caught {str(e)}", "red")
                             logging.error(f"Error general en case 'start': {str(e)}")
-                            conn.send("FAILED".encode('UTF-8'))
-                            cadena = ""
-
-                    case "interlocking_top_level":
-                        try:
-                            url_data = conexion.obtener_url_api()
-
-                            if url_data == "FAILED" or not url_data:
-                                safe_insert("Database query error in obtener_url_api", "red")
-                                conn.send("FAILED".encode('UTF-8'))
-                                break
-                                                                                                                    
-                            url_interlocking = url_data[1][0]   # Interlocking API
-
-                            if len(option) == 3 and option[-1] == '1/':
-                                safe_insert("\n🔗 Dispatching validation schema to Interlocking...", "blue")
-
-                                interlocking_json_api = interlocking_json.interlocking_station_20_v2(
-                                    option[1]
-                                )
-
-                                if interlocking_json_api is None:
-                                    safe_insert("Please submit the PCBA so we can proceed with the endpoint interlocking call.", "red")
-                                    logging.info(f"Please submit the PCBA so we can proceed with the endpoint interlocking call.")
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    green_label.configure(image=image_green)
-                                    red_label.configure(image=image_red_full)
-                                    break
-
-                                logging.info(f"[INTERLOCKING JSON]:\n{json.dumps(interlocking_json_api, indent=4, ensure_ascii=False)}")
-                                response_interlocking = requests.post(url_interlocking, json=interlocking_json_api, timeout=30)
-                                
-                                if response_interlocking.status_code != 200:
-                                    safe_insert(f"Interlocking HTTP {response_interlocking.status_code}", "red")
-                                    conn.send(f"FAILED".encode('UTF-8'))
-                                    break
-                                
-                                data_interlocking = response_interlocking.json()
-                                
-                                llamada_interlocking = data_interlocking.get("success", False)
-                                
-                                if llamada_interlocking == "false":
-                                    error_msg = data_interlocking.get("message", "Unknown error")
-                                    logging.error(f"Interlocking denied: {error_msg}")
-                                    safe_insert(f"❌ Interlocking API FAILED: {json.dumps(data_interlocking, indent=2)}", "red")
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    green_label.configure(image=image_green)
-                                    red_label.configure(image=image_red_full)
-                                    break
-                                
-                                if isinstance(data_interlocking, list):
-                                    data_interlocking = data_interlocking[0] if len(data_interlocking) > 0 else {}
-                                
-                                    logging.info(f"[INTERLOCKING RESPONSE]:\n{json.dumps(data_interlocking, indent=4, ensure_ascii=False)}")
-                                
-                                if not data_interlocking.get("success", False):
-                                    error_msg = data_interlocking.get("message", "Business rule validation error")
-                                    safe_insert(f"Interlocking Denied: {error_msg}", "red")
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    break
-                                
-                                pantalla_final = (
-                                    f"[INTERLOCKING REQUEST]:\n{json.dumps(interlocking_json_api, indent=2)}\n\n"
-                                    f"[INTERLOCKING RESPONSE]:\n{json.dumps(data_interlocking, indent=2)}\n\n"
-                                )
-                                
-                                safe_insert(pantalla_final, "green")
-                                entry_piece.configure(state="readonly", textvariable=piece_name)
-                                piece_name.set(option[1])
-                                conn.send(f"PASSED".encode('UTF-8'))
-                                                                
-                                conexionBitacora.event("SPP-001", f"Parent: {option[1]}", month, day)
-                                entry_piece.configure(state="readonly", textvariable=piece_name)
-                                piece_name.set(option[1])
-                                green_label.configure(image=image_green_full)
-                                red_label.configure(image=image_red)
-                                # break
-                            
-                        except Exception as e:
-                            safe_insert(f"❌ Exception Caught {str(e)}", "red")
-                            logging.error(f"Error general en case 'start': {str(e)}")
-                            green_label.configure(image=image_green)
-                            red_label.configure(image=image_red_full)
                             conn.send("FAILED".encode('UTF-8'))
                             cadena = ""
 
@@ -2095,302 +2019,13 @@ def worker(conn, addr):
                             red_label.configure(image=image_red_full)
 
                             cadena = ""
-
-                    case "pcba":
-                        pieza_padre = piece_name.get()
-                        entry_piece.focus_set()
-
-                        error_detectado = False
-                        datos_actuales = conexion.configuradorst20_v2()
-                        pcb_process = datos_actuales[4]
-                        
-                        # Limpiar tabla al cambiar componente
-                        clear_table_data()
-
-                        COMPONENT = ""
-                        scanned_component = ""
-                        comp_process_name = ""
-
-                        url_data = conexion.obtener_url_api()
-                        
-                        if url_data == "FAILED" or not url_data:
-                            safe_insert("Database query error in obtener_url_api", "red")
-                            conn.send("FAILED".encode('UTF-8'))
-                            break
-                                                                                        
-                        url_api_conduit = url_data[3][0]
-
-                        if len(option) == 2 and option[-1] == '1/':
-                            entry_piece.configure(state=ctk.NORMAL, textvariable=piece_name)
-                            piece_name.set("")
-                            safe_insert("You can scan the PCBA.", "green")
-
-                            green_label.configure(image=image_green_full)
-                            red_label.configure(image=image_red)
-
-                            try:
-                                start_time = time.time()
-                                comp_scanned = False
-                                while not comp_scanned:
-                                    scanned_component = entry_piece.get().strip()
-                                    time.sleep(0.05)
-
-                                    elapsed_comp = time.time() -  start_time
-                                    if len(scanned_component) == 0:
-                                        if elapsed_comp >= 240:
-                                            piece_name.set("")
-                                            safe_insert("Timeout waiting for Component scan.", "red")
-                                            conn.send("START-AGAIN".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-                                        continue
-
-                                    if len(scanned_component) > 13:
-                                        # BLOQUEO DE CURSOR
-                                        entry_piece.configure(state="disabled")
-
-                                        pcba_conduit = conduit_json.conduit_st20(
-                                            scanned_component
-                                        )
-
-                                        response_comp = requests.post(
-                                            url_api_conduit,
-                                            json=pcba_conduit,
-                                            timeout=30
-                                        )
-                                                                                    
-                                        if response_comp.status_code != 200:
-                                            entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert(f"Component API HTTP {response_comp.status_code}", "red")
-                                            conn.send(f"FAILED".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-                                                                                
-                                        try:
-                                            json_comp = response_comp.json()
-                                        except Exception:
-                                            entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert("Component invalid JSON payload", "red")
-                                            conn.send("FAILED".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-
-                                        estado = json_comp.get("status", "No status")
-                                        mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
-                                        estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
-
-                                        part_number = json_comp.get('transaction_responses')
-                                        part_number = part_number[0].get('scanned_unit')
-                                        part_number = part_number.get('unit')
-                                        part_number = part_number.get('part_number')
-                                        # print(json.dumps(json_comp, indent=2))
-                                        # print(f"JSON get status: {estado}")
-                                        # print(f"JSON get transaction_responses: {part_number}")
-                                                                                    
-                                        if estado != "OK":
-                                            entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert(f"Component API status: {estado}\nMessage: {mensaje}", "red")
-                                            conn.send(f"FAILED".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-
-                                        if not part_number:
-                                            entry_piece.configure(state=ctk.NORMAL)
-                                            safe_insert("Missing part_number in Component record", "red")
-                                            conn.send("FAILED".encode('UTF-8'))
-                                            error_detectado = True
-                                            break
-
-                                        pcba_almacenada = conexion.pcba_store(scanned_component,part_number, estado)
-
-                                        logging.info(f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}")
-                                        logging.info(f"PCBA stored in database: {pcba_almacenada}")
-
-                                        pantalla_final = (
-                                            f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED\n"
-                                            f"[API CONDUIT URL]:\n{url_api_conduit}\n"
-                                            f"[API CONDUIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
-                                            f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}"
-                                        )
-                                        
-                                        safe_insert(pantalla_final, "green")
-                                        
-                                        conn.send(f"{scanned_component}, PASSED".encode('UTF-8'))
-
-                                        conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" actuator: "+scanned_component,month,day)
-                                        conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
-                                        
-                                        green_label.configure(image=image_green_full)
-                                        red_label.configure(image=image_red)
-                                        
-                                        entry_piece.configure(state="readonly", textvariable=piece_name)
-                                        piece_name.set(scanned_component)
-                                        
-                                        pieza = scanned_component
-
-                                        break
-                                    else:
-                                        entry_piece.configure(state="readonly", textvariable=piece_name)
-                                        piece_name.set("")
-                                                    
-                                        safe_insert("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
-        
-                                        try:
-                                            conn.send("FAILED".encode('UTF-8'))
-                                            conn.send("verify data".encode('UTF-8'))
-                                        except Exception as e:
-                                            safe_insert(f"Error enviando: {e}", "red")
-                                                    
-                                        conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+scanned_component,month,day)
-                                        conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
-        
-                                        green_label.configure(image=image_green)
-                                        red_label.configure(image=image_red_full)
-                                                        
-                                        break
-
-                            except TypeError as e:
-                                print("Error: ", e)
-                                logging.error(f"Connection was closed"+"\n"+f"Error: {str(e)}"+"\n"+"Contact technical support!")
-                                safe_insert("Connection was closed"+"\n"+f"Error: {str(e)}"+"\n"+"Contact technical support!", "red")
-                                cadena = ""
-                        
-                        elif len(option) == 3 and option[-1] == '1/':
-                            entry_piece.configure(state=ctk.NORMAL, textvariable=piece_name)
-                            piece_name.set("")
-                            safe_insert("", "green")
-                            # safe_insert("You can scan the part.", "green")
-
-                            green_label.configure(image=image_green_full)
-                            red_label.configure(image=image_red)
-
-                            COMPONENT = ""
-                            scanned_component = option[1]
-                            comp_process_name = ""
-
-                            entry_piece.configure(state="readonly", textvariable=piece_name)
-                            piece_name.set(scanned_component)
-
-                            if len(scanned_component) > 13:
-                                # BLOQUEO DE CURSOR
-                                entry_piece.configure(state="disabled")
-
-                                pcba_conduit = conduit_json.conduit_st20(
-                                    scanned_component
-                                )
-
-                                response_comp = requests.post(
-                                    url_api_conduit,
-                                    json=pcba_conduit,
-                                    timeout=30
-                                )
-                                                                            
-                                if response_comp.status_code != 200:
-                                    entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert(f"Component API HTTP {response_comp.status_code}", "red")
-                                    conn.send(f"FAILED".encode('UTF-8'))
-                                    error_detectado = True
-                                    break
-                                                                        
-                                try:
-                                    json_comp = response_comp.json()
-                                except Exception:
-                                    entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert("Component invalid JSON payload", "red")
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    error_detectado = True
-                                    break
-
-                                estado = json_comp.get("status", "No status")
-                                mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
-                                estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
-
-                                part_number = json_comp.get('transaction_responses')
-                                part_number = part_number[0].get('scanned_unit')
-                                part_number = part_number.get('unit')
-                                part_number = part_number.get('part_number')
-                                # print(json.dumps(json_comp, indent=2))
-                                # print(f"JSON get status: {estado}")
-                                # print(f"JSON get message: {mensaje}")
-                                # print(f"JSON get transaction_responses: {part_number}")
-                                                                            
-                                if estado != "OK":
-                                    entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert(f"Component API status: {estado}\nMessage: {mensaje}", "red")
-                                    conn.send(f"FAILED".encode('UTF-8'))
-                                    error_detectado = True
-                                    break
-
-                                if not part_number:
-                                    entry_piece.configure(state=ctk.NORMAL)
-                                    safe_insert("Missing part_number in Component record", "red")
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    error_detectado = True
-                                    break
-
-                                pcba_almacenada = conexion.pcba_store(scanned_component,part_number, estado)
-
-                                logging.info(f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}")
-                                logging.info(f"PCBA stored in database: {pcba_almacenada}")
-
-                                pantalla_final = (
-                                    f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED\n"
-                                    f"[API CONDUIT URL]:\n{url_api_conduit}\n"
-                                    f"[API CONDUIT]:\n{json.dumps(json_comp, indent=2)}\n\n"
-                                    f"✅ PCBA Registered: {scanned_component} with part_number: {part_number} and status: {estado}"
-                                )
-                                
-                                safe_insert(pantalla_final, "green")
-                                
-                                conn.send(f"{scanned_component}, PASSED".encode('UTF-8'))
-
-                                conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" actuator: "+scanned_component,month,day)
-                                conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
-                                
-                                green_label.configure(image=image_green_full)
-                                red_label.configure(image=image_red)
-                                
-                                entry_piece.configure(state="readonly", textvariable=piece_name)
-                                piece_name.set(scanned_component)
-                                
-                                pieza = scanned_component
-
-                            else:
-                                entry_piece.configure(state="readonly", textvariable=piece_name)
-                                piece_name.set("")
-                                            
-                                safe_insert("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
-
-                                try:
-                                    conn.send("FAILED".encode('UTF-8'))
-                                    conn.send("verify data".encode('UTF-8'))
-                                except Exception as e:
-                                    safe_insert(f"Error enviando: {e}", "red")
-                                            
-                                conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+scanned_component,month,day)
-                                conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
-
-                                green_label.configure(image=image_green)
-                                red_label.configure(image=image_red_full)
-                                                
-                                break
-                        else:
-                            safe_insert("Command received-> "+comando_completo+"\n"+"Command FAILED", "red")
-
-                            conexionBitacora.event("SPP-002","|Command received| "+comando_completo,month,day)
-                            conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
-
-                            green_label.configure(image=image_green)
-                            red_label.configure(image=image_red_full)
-
-                            cadena = ""
                     case _:
-                        safe_insert("Command received-> "+comando_completo+"\n"+"Command FAILED"+"\n", "red")
+                        safe_insert("Command received-> "+cadena+"\n"+"Command FAILED"+"\n", "red")
                         try:
                             conn.send("FAILED".encode('UTF-8'))
                         except Exception as e:
                             safe_insert(f"Error enviando: {e}", "red")
-                        conexionBitacora.event("COM-002","|Command received| "+comando_completo,month,day)
+                        conexionBitacora.event("COM-002","|Command received| "+cadena,month,day)
                         conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                         green_label.configure(image=image_green)
