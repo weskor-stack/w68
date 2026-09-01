@@ -4188,7 +4188,7 @@ def configuradorst20_v2():
             return ("", "", "", "", "", "", "")
             
     except Exception as e:
-        print(f"Error en conexion.configuradorst20: {e}")
+        # print(f"Error en conexion.configuradorst20: {e}")
         return "FAILED"
 
 def update_configuratorst20_v2(machine_id, operator, program_name_version, process_name, product, client_id, password):
@@ -4236,6 +4236,116 @@ def insert_configuratorst20_v2(machine_id, operator, program_name_version, proce
         if conn: conn.rollback()
         raise Exception(f"Fallo al insertar configuración inicial: {e}")
 
+########################################################## REGISTRO DE PCBA ####################################################
+def pcba_store(scanned_component,part_number, estado):
+    try:
+
+        # --- Insertar pcba ---
+        cursor = conn.cursor()
+        sql = """
+            INSERT INTO pcba (pcba_name, pcba_part_number, pcba_process_name, status_id)
+            VALUES (?, ?, ?, ?)
+        """
+        cursor.execute(sql, (scanned_component, part_number, estado,1))
+        conn.commit()
+        cursor.close()
+
+        return "PASSED"
+
+    except mariadb.Error as e:
+        # print(f"[DB ERROR] pcba_store(): {e}")
+        return "FAILED"
+    except Exception as e:
+        # print(f"[ERROR] pcba_store(): {e}")
+        return "FAILED"
+############################################################################################################################################
+
+########################################################## Consulta de registros de PCBA ####################################################
+def pcba_select():
+    try:
+        conn = get_connection() 
+        cursor = conn.cursor()  
+        sql = """
+            SELECT pcba_name, pcba_part_number FROM pcba WHERE status_id = 1 ORDER BY pcba_id ASC
+            LIMIT 2;
+        """
+        cursor.execute(sql)
+        registro = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        if registro:
+            return registro
+        else:
+            return "FAILED"
+            
+    except Exception as e:
+        # print(f"Error en conexion.configuradorst20: {e}")
+        return "FAILED"
+
+def pcba_select_all():
+    try:
+        conn = get_connection() 
+        cursor = conn.cursor()  
+        sql = """
+            SELECT pcba_name, pcba_part_number FROM pcba WHERE status_id = 1 ORDER BY pcba_id ASC;
+        """
+        cursor.execute(sql)
+        registro = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        if registro:
+            return registro
+        else:
+            return "FAILED"
+            
+    except Exception as e:
+        # print(f"Error en conexion.configuradorst20: {e}")
+        return "FAILED"
+
+def pcba_update_status():
+    try:
+        conn = get_connection() 
+        cursor = conn.cursor()  
+        sql = """
+            UPDATE pcba
+            SET status_id = 2
+            ORDER BY pcba_id ASC
+            LIMIT 2;
+        """
+        cursor.execute(sql)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return "PASSED"
+            
+    except Exception as e:
+        # print(f"Error en conexion.configuradorst20: {e}")
+        return "FAILED"
+
+def pcba_update_status_single(pcba_name):
+    try:
+        conn = get_connection() 
+        cursor = conn.cursor()  
+        sql = """
+            UPDATE pcba
+            SET status_id = 2
+            WHERE pcba_name = %s
+            ORDER BY pcba_id ASC
+            LIMIT 2;
+        """
+        cursor.execute(sql, (pcba_name,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return "PASSED"
+            
+    except Exception as e:
+        # print(f"Error en conexion.configuradorst20: {e}")
+        return "FAILED"
 ############################################################################################################################################
 
 # name = "P1895152-00-G:SHG2242791000290"
@@ -4250,3 +4360,6 @@ def insert_configuratorst20_v2(machine_id, operator, program_name_version, proce
 # welding_data(1)
 # atributos()
 # get_urls()
+# print(f"PCBA SELECT: {pcba_select()}")
+# print(f"PCBA SELECT ALL: {pcba_select_all()}")
+# print(f"PCBA UPDATE STATUS: {pcba_update_status_single('PCB-00000000-267')}")
