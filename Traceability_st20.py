@@ -2013,10 +2013,10 @@ def worker(conn, addr):
                                             piece_name.set(name_piece)
                                                                 
                                             # conexion.component_store(name_piece)
-                                            safe_insert("Command received-> "+cadena+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE PASSED", "green")
-                                            logging.info("Command received-> "+cadena+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE PASSED")
+                                            safe_insert("Command received-> "+comando_completo+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE PASSED", "green")
+                                            logging.info("Command received-> "+comando_completo+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE PASSED")
                                                 
-                                            conexionBitacora.event("SPP-001","|Command received| "+cadena+" PCBA/Housing: "+name_piece,month,day)
+                                            conexionBitacora.event("SPP-001","|Command received| "+comando_completo+" PCBA/Housing: "+name_piece,month,day)
                                             conexionBitacora.event("CMD-P001","|Command,PASSED|",month,day)
 
                                             green_label.configure(image=image_green_full)
@@ -2029,12 +2029,12 @@ def worker(conn, addr):
                                         else:
                                             try:
                                                 conn.send("FAILED".encode('UTF-8'))
-                                                safe_insert("Command received-> "+cadena+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE FAILED", "red")
+                                                safe_insert("Command received-> "+comando_completo+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE FAILED", "red")
                                                 
                                             except Exception as e:
                                                 safe_insert(f"Error enviando: {e}", "red")
                                             
-                                            conexionBitacora.event("SPP-002","|Command received| "+cadena+" part: "+name_piece,month,day)
+                                            conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+name_piece,month,day)
                                             conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                                             green_label.configure(image=image_green)
@@ -2042,12 +2042,12 @@ def worker(conn, addr):
                                     else:
                                         try:
                                             conn.send("FAILED".encode('UTF-8'))
-                                            safe_insert("Command received-> "+cadena+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE FAILED", "red")
+                                            safe_insert("Command received-> "+comando_completo+" PCBA/Housing: "+name_piece+"\n"+"Command VALIDATE FAILED", "red")
                                                 
                                         except Exception as e:
                                             safe_insert(f"Error enviando: {e}", "red")
                                             
-                                        conexionBitacora.event("SPP-002","|Command received| "+cadena+" part: "+name_piece,month,day)
+                                        conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+name_piece,month,day)
                                         conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                                         green_label.configure(image=image_green)
@@ -2058,7 +2058,7 @@ def worker(conn, addr):
                                     except Exception as e:
                                         safe_insert(f"Error enviando: {e}", "red")
 
-                                    conexionBitacora.event("SPP-002","|Command received| "+cadena+" part: "+name_piece,month,day)
+                                    conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+name_piece,month,day)
                                     conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                                     green_label.configure(image=image_green)
@@ -2070,7 +2070,7 @@ def worker(conn, addr):
                                 entry_piece.configure(state="readonly", textvariable=piece_name)
                                 piece_name.set("")
                                             
-                                safe_insert("Command received-> "+cadena+" part: "+name_piece+"\n"+"Command FAILED", "red")
+                                safe_insert("Command received-> "+comando_completo+" part: "+name_piece+"\n"+"Command FAILED", "red")
 
                                 try:
                                     conn.send("FAILED".encode('UTF-8'))
@@ -2078,7 +2078,7 @@ def worker(conn, addr):
                                 except Exception as e:
                                     safe_insert(f"Error enviando: {e}", "red")
                                             
-                                conexionBitacora.event("SPP-002","|Command received| "+cadena+" part: "+name_piece,month,day)
+                                conexionBitacora.event("SPP-002","|Command received| "+comando_completo+" part: "+name_piece,month,day)
                                 conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                                 green_label.configure(image=image_green)
@@ -2086,9 +2086,9 @@ def worker(conn, addr):
                                                 
                                 break
                         else:
-                            safe_insert("Command received-> "+cadena+"\n"+"Command FAILED", "red")
+                            safe_insert("Command received-> "+comando_completo+"\n"+"Command FAILED", "red")
 
-                            conexionBitacora.event("SPP-002","|Command received| "+cadena,month,day)
+                            conexionBitacora.event("SPP-002","|Command received| "+comando_completo,month,day)
                             conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
 
                             green_label.configure(image=image_green)
@@ -2302,13 +2302,13 @@ def worker(conn, addr):
                                     error_detectado = True
                                     break
 
-                                estado = json_comp.get("status", "No status")
-                                mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
-                                estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
-
                                 try:
+                                    estado = json_comp.get("status", "No status")
+                                    mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
+                                    estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
+                                
                                     part_number = json_comp.get('transaction_responses')
-                                    part_number = part_number[0].get('scanned_unit')
+                                    part_number = part_number[0].get('scanned_unit') #error en producción
                                     part_number = part_number.get('unit')
                                     part_number = part_number.get('part_number')
                                     # print(json.dumps(json_comp, indent=2))
