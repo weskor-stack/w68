@@ -2318,6 +2318,7 @@ def worker(conn, addr):
                                 except Exception as e:
                                     entry_piece.configure(state=ctk.NORMAL)
                                     safe_insert(f"Error extracting part_number: {e}\n{json.dumps(json_comp, indent=2)}", "red")
+                                    logging.error(f"Error extracting part_number: {e}\n{json.dumps(json_comp, indent=2)}")
                                     conn.send("FAILED".encode('UTF-8'))
                                     conexionBitacora.event("COM-002","|Command received| "+comando_completo,month,day)
                                     conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
@@ -2374,6 +2375,7 @@ def worker(conn, addr):
                                 piece_name.set("")
                                             
                                 safe_insert("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
+                                logging.error("Command received-> "+comando_completo+" part: "+scanned_component+"\n"+"Command FAILED")
 
                                 try:
                                     conn.send("FAILED".encode('UTF-8'))
@@ -2390,6 +2392,7 @@ def worker(conn, addr):
                                 break
                         else:
                             safe_insert("Command received-> "+comando_completo+"\n"+"Command FAILED", "red")
+                            logging.error("Command received-> "+comando_completo+"\n"+"Command FAILED")
 
                             conexionBitacora.event("SPP-002","|Command received| "+comando_completo,month,day)
                             conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
@@ -2400,6 +2403,7 @@ def worker(conn, addr):
                             cadena = ""
                     case _:
                         safe_insert("Command received-> "+comando_completo+"\n"+"Command FAILED"+"\n", "red")
+                        logging.error("Command received-> "+comando_completo+"\n"+"Command FAILED")
                         try:
                             conn.send("FAILED".encode('UTF-8'))
                         except Exception as e:
