@@ -2270,6 +2270,7 @@ def worker(conn, addr):
 
                             entry_piece.configure(state="readonly", textvariable=piece_name)
                             piece_name.set(scanned_component)
+                            logging.info(f"Command received-> {comando_completo} PCBA: {scanned_component}\nCommand PASSED")
 
                             if len(scanned_component) > 13:
                                 # BLOQUEO DE CURSOR
@@ -2305,20 +2306,31 @@ def worker(conn, addr):
                                 mensaje = estado.get("message", "No message") if isinstance(estado, dict) else "No message"
                                 estado = estado.get("code", "No code") if isinstance(estado, dict) else estado
 
-                                part_number = json_comp.get('transaction_responses')
-                                part_number = part_number[0].get('scanned_unit')
-                                part_number = part_number.get('unit')
-                                part_number = part_number.get('part_number')
-                                # print(json.dumps(json_comp, indent=2))
-                                # print(f"JSON get status: {estado}")
-                                # print(f"JSON get message: {mensaje}")
-                                # print(f"JSON get transaction_responses: {part_number}")
+                                try:
+                                    part_number = json_comp.get('transaction_responses')
+                                    part_number = part_number[0].get('scanned_unit')
+                                    part_number = part_number.get('unit')
+                                    part_number = part_number.get('part_number')
+                                    # print(json.dumps(json_comp, indent=2))
+                                    # print(f"JSON get status: {estado}")
+                                    # print(f"JSON get message: {mensaje}")
+                                    # print(f"JSON get transaction_responses: {part_number}")
+                                except Exception as e:
+                                    entry_piece.configure(state=ctk.NORMAL)
+                                    safe_insert(f"Error extracting part_number: {e}\n{json.dumps(json_comp, indent=2)}", "red")
+                                    conn.send("FAILED".encode('UTF-8'))
+                                    conexionBitacora.event("COM-002","|Command received| "+comando_completo,month,day)
+                                    conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
+                                    error_detectado = True
+                                    break
                                                                             
                                 if estado != "OK":
                                     entry_piece.configure(state=ctk.NORMAL)
                                     safe_insert(f"Component API status: {estado}\nMessage: {mensaje}", "red")
                                     conn.send(f"FAILED".encode('UTF-8'))
                                     error_detectado = True
+                                    conexionBitacora.event("COM-002","|Command received| "+comando_completo,month,day)
+                                    conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
                                     break
 
                                 if not part_number:
@@ -2326,6 +2338,8 @@ def worker(conn, addr):
                                     safe_insert("Missing part_number in Component record", "red")
                                     conn.send("FAILED".encode('UTF-8'))
                                     error_detectado = True
+                                    conexionBitacora.event("COM-002","|Command received| "+comando_completo,month,day)
+                                    conexionBitacora.event("CMD-F001","|Command,FAILED|",month,day)
                                     break
 
                                 pcba_almacenada = conexion.pcba_store(scanned_component,part_number, estado)
